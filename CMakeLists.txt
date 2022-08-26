@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(fcontext)
 
+option(USE_FCTX_TESTS "use fcontext test" ON)
+
 # FCTX_ARCH: arm arm64 i386 mips32 ppc32 ppc64 x86_64
 # FCTX_PLATFORM: aapcs ms sysv o32
 # FCTX_COFF: elf pe macho xcoff 
@@ -39,7 +41,8 @@ if (WIN32)
     else()
         set(FCTX_ASM_COMPILER masm)
         enable_language(ASM_MASM)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
+		
+		set(FCTX_LINKER_OPTIONS /SAFESEH:NO)
     endif()
 else()
     set(FCTX_PLATFORM sysv)
@@ -50,10 +53,13 @@ else()
 endif()
 
 set(FCTX_SOURCE_SUFFIX ${FCTX_ARCH}_${FCTX_PLATFORM}_${FCTX_COFF}_${FCTX_ASM_COMPILER}${FCTX_ASM_SOURCE_EXTENSION})
-set(SRC asm/make_${FCTX_SOURCE_SUFFIX} asm/jump_${FCTX_SOURCE_SUFFIX} asm/ontop_${FCTX_SOURCE_SUFFIX})
+set(FCTX_SOURCE asm/make_${FCTX_SOURCE_SUFFIX} asm/jump_${FCTX_SOURCE_SUFFIX} asm/ontop_${FCTX_SOURCE_SUFFIX})
 
-add_definitions(-DBOOST_CONTEXT_EXPORT)
-add_library(fcontext fcontext.h ${SRC})
+add_library(fcontext fcontext.h fcontext.c ${FCTX_SOURCE})
+target_include_directories(fcontext PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(fcontext PRIVATE BOOST_CONTEXT_EXPORT)
+target_link_options(fcontext PUBLIC ${FCTX_LINKER_OPTIONS})
 
-add_executable(fcontext_test test.c)
-target_link_libraries(fcontext_test PRIVATE fcontext)
+if (USE_FCTX_TESTS)
+    add_subdirectory(tests)
+endif()
